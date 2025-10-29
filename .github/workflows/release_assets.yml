@@ -30,7 +30,12 @@ jobs:
 
     - name: Build Windows executable
       run: |
-        pyinstaller --onefile --console --name "Word2TXT-Windows" src/main.py
+        pyinstaller --onefile --console --name "Word2TXT-Windows" ^
+                --add-data "src/OCR_Images.py;." ^
+                --add-data "src/OCR_Images_slow.py;." ^
+                --add-data "src/Word2PNG.py;." ^
+                --add-data "src/JPEG_to_PNG.py;." ^
+                src/main.py
 
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
@@ -60,7 +65,12 @@ jobs:
 
     - name: Build macOS executable
       run: |
-        pyinstaller --onefile --console --name "Word2TXT-MacOS" src/main.py
+        pyinstaller --onefile --console --name "Word2TXT-MacOS" ^
+                --add-data "src/OCR_Images.py;." ^
+                --add-data "src/OCR_Images_slow.py;." ^
+                --add-data "src/Word2PNG.py;." ^
+                --add-data "src/JPEG_to_PNG.py;." ^
+                src/main.py
 
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
@@ -91,7 +101,12 @@ jobs:
 
     - name: Build Linux executable
       run: |
-        pyinstaller --onefile --console --name "Word2TXT-Linux" src/main.py
+        pyinstaller --onefile --console --name "Word2TXT-Linux" ^
+                --add-data "src/OCR_Images.py;." ^
+                --add-data "src/OCR_Images_slow.py;." ^
+                --add-data "src/Word2PNG.py;." ^
+                --add-data "src/JPEG_to_PNG.py;." ^
+                src/main.py
 
     - name: Upload Linux artifact
       uses: actions/upload-artifact@v4
