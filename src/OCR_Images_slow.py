@@ -53,20 +53,26 @@ def ocr_images_to_individual_files(input_folder, output_folder):
                     img = img.convert('RGB')
 
                 text = pytesseract.image_to_string(img)
-
                 text = text.strip()
 
-            with open(output_txt_path, 'w', encoding='utf-8') as f:
+            with open(output_txt_path, 'w', encoding='utf-8', errors='replace') as f:
                 f.write(text)
             
             char_count = len(text)
             word_count = len(text.split()) if text else 0
-            
-            print(f"Processed {i}/{len(image_files)}: {image_file} → {output_txt_file}")
-            print(f"{char_count} characters, {word_count} words")
+
+            safe_image_file = image_file.encode('ascii', 'replace').decode('ascii')
+            safe_txt_file = output_txt_file.encode('ascii', 'replace').decode('ascii')
+            print(f"Processed {i}/{len(image_files)}: {safe_image_file} -> {safe_txt_file}")
+            print(f"   {char_count} characters, {word_count} words")
             
             success_count += 1
             
+        except UnicodeEncodeError as e:
+            safe_image_file = image_file.encode('ascii', 'replace').decode('ascii')
+            print(f"Processed {i}/{len(image_files)}: {safe_image_file} -> {output_txt_file}")
+            print(f"   Note: Contains special characters that can't be displayed in console")
+            success_count += 1
         except Exception as e:
             error_msg = f"Failed to process {image_file}: {e}"
             print(error_msg)
@@ -106,11 +112,13 @@ def main():
             print(f"Created {len(txt_files)} text files")
             if len(txt_files) <= 5:
                 for txt_file in txt_files[:5]:
-                    print(f"{txt_file}")
+                    safe_txt_file = txt_file.encode('ascii', 'replace').decode('ascii')
+                    print(f"   {safe_txt_file}")
             else:
                 for txt_file in txt_files[:3]:
-                    print(f"{txt_file}")
-                print(f"... and {len(txt_files) - 3} more")
+                    safe_txt_file = txt_file.encode('ascii', 'replace').decode('ascii')
+                    print(f"   {safe_txt_file}")
+                print(f"   ... and {len(txt_files) - 3} more")
     else:
         print("No images were processed successfully")
         sys.exit(1)
