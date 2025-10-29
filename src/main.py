@@ -126,7 +126,7 @@ class DocumentProcessorGUI:
         mode_frame.pack(fill=tk.X, pady=5)
         ttk.Label(mode_frame, text="Mode:").pack(side=tk.LEFT)
         self.ocr_mode = tk.StringVar(value="fast")
-    
+
         def on_mode_change():
             if self.ocr_mode.get() == "slow":
                 cpu_combo.config(state="disabled")
@@ -134,11 +134,25 @@ class DocumentProcessorGUI:
             else:
                 cpu_combo.config(state="readonly")
                 cpu_label.config(state="normal")
-    
+
         ttk.Radiobutton(mode_frame, text="Fast", variable=self.ocr_mode, 
                       value="fast", command=on_mode_change).pack(side=tk.LEFT, padx=10)
         ttk.Radiobutton(mode_frame, text="Slow", variable=self.ocr_mode, 
                       value="slow", command=on_mode_change).pack(side=tk.LEFT, padx=10)
+
+        lang_frame = ttk.Frame(tab)
+        lang_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(lang_frame, text="Language:").pack(side=tk.LEFT)
+        self.ocr_lang = tk.StringVar(value="eng")
+
+        available_langs = self.scan_tesseract_languages()
+        lang_combo = ttk.Combobox(lang_frame, textvariable=self.ocr_lang, 
+                                  values=available_langs, 
+                                  state="readonly", width=15)
+        lang_combo.pack(side=tk.LEFT, padx=(5, 0))
+
+        lang_count_label = ttk.Label(lang_frame, text=f"({len(available_langs)} languages detected)")
+        lang_count_label.pack(side=tk.LEFT, padx=(10, 0))
 
         input_frame = ttk.Frame(tab)
         input_frame.pack(fill=tk.X, pady=5)
@@ -168,7 +182,132 @@ class DocumentProcessorGUI:
 
         self.cpu_combo = cpu_combo
         self.cpu_label = cpu_label
-    
+
+    def scan_tesseract_languages(self):
+        """Scan Tesseract tessdata directory for available languages by checking PATH and common locations"""
+        import os
+        import platform
+        import subprocess
+
+        languages = set()
+        tessdata_paths = set()
+
+        try:
+            result = subprocess.run(['tesseract', '--list-langs'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+                if len(lines) > 1:
+                    for line in lines[1:]:
+                        lang = line.strip()
+                        if lang:
+                            languages.add(lang)
+
+                result = subprocess.run(['tesseract', '--print-parameters'], 
+                                    capture_output=True, text=True, timeout=10)
+                for line in result.stdout.split('\n'):
+                    if 'tessdata-dir' in line.lower():
+                        parts = line.split()
+                        if len(parts) > 1:
+                            tessdata_paths.add(parts[1])
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+            pass
+
+        env_vars = ['TESSDATA_PREFIX', 'TESSERACT_PREFIX', 'TESSERACT_TESSDATA']
+        for env_var in env_vars:
+            path = os.environ.get(env_var)
+            if path and os.path.exists(path):
+                tessdata_paths.add(path)
+                if not path.endswith('tessdata'):
+                    tessdata_paths.add(os.path.join(path, 'tessdata'))
+
+        path_dirs = os.environ.get('PATH', '').split(os.pathsep)
+        for path_dir in path_dirs:
+            if 'tesseract' in path_dir.lower():
+                parent_dir = os.path.dirname(path_dir)
+                possible_paths = [
+                    os.path.join(path_dir, 'tessdata'),
+                    os.path.join(parent_dir, 'tessdata'),
+                    os.path.join(parent_dir, 'share', 'tessdata'),
+                    os.path.join(parent_dir, 'Tesseract-OCR', 'tessdata'),
+                ]
+                for possible_path in possible_paths:
+                    if os.path.exists(possible_path):
+                        tessdata_paths.add(possible_path)
+
+        if platform.system() == "Windows":
+            common_paths = [
+                os.path.join(os.environ.get('ProgramFiles', ''), 'Tesseract-OCR', 'tessdata'),
+                os.path.join(os.environ.get('ProgramFiles(x86)', ''), 'Tesseract-OCR', 'tessdata'),
+                os.path.join(os.environ.get('APPDATA', ''), 'Tesseract-OCR', 'tessdata'),
+                os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Tesseract-OCR', 'tessdata'),
+            ]
+        elif platform.system() == "Linux":
+            common_paths = [
+                '/usr/share/tesseract-ocr/tessdata',
+                '/usr/share/tesseract-ocr/4.00/tessdata',
+                '/usr/share/tesseract-ocr/5/tessdata',
+                '/usr/local/share/tessdata',
+                '/usr/share/tessdata',
+            ]
+        elif platform.system() == "Darwin":
+            common_paths = [
+                '/usr/local/share/tessdata',
+                '/opt/homebrew/share/tessdata',
+                '/usr/local/Cellar/tesseract/*/share/tessdata',
+            ]
+        else:
+            common_paths = []
+
+        for path in common_paths:
+            if '*' in path:
+                import glob
+                expanded_paths = glob.glob(path)
+                for expanded_path in expanded_paths:
+                    if os.path.exists(expanded_path):
+                        tessdata_paths.add(expanded_path)
+            elif os.path.exists(path):
+                tessdata_paths.add(path)
+
+        for tessdata_path in tessdata_paths:
+            try:
+                if os.path.exists(tessdata_path):
+                    for file in os.listdir(tessdata_path):
+                        if file.endswith('.traineddata'):
+                            lang_code = file.replace('.traineddata', '')
+                            if lang_code not in ('osd', 'equ'):
+                                languages.add(lang_code)
+            except (PermissionError, OSError):
+                continue
+
+        if tessdata_paths and not languages:
+            for tessdata_path in tessdata_paths:
+                try:
+                    for root, dirs, files in os.walk(tessdata_path):
+                        for file in files:
+                            if file.endswith('.traineddata'):
+                                lang_code = file.replace('.traineddata', '')
+                                if lang_code not in ('osd', 'equ'):
+                                    languages.add(lang_code)
+                except (PermissionError, OSError):
+                    continue
+
+        lang_list = sorted(list(languages))
+
+        if 'vie' in languages and 'eng' in languages:
+            lang_list.extend(['vie+eng', 'eng+vie'])
+        if 'fra' in languages and 'eng' in languages:
+            lang_list.extend(['fra+eng', 'eng+fra'])
+        if 'spa' in languages and 'eng' in languages:
+            lang_list.extend(['spa+eng', 'eng+spa'])
+        if 'deu' in languages and 'eng' in languages:
+            lang_list.extend(['deu+eng', 'eng+deu'])
+
+        if not lang_list:
+            lang_list = ['eng']
+
+        return lang_list
+
     def create_right_panel(self):
         right_frame = ttk.LabelFrame(self.main_frame, text="Console Output")
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
@@ -288,6 +427,7 @@ class DocumentProcessorGUI:
         output_folder = self.ocr_output.get()
         mode = self.ocr_mode.get()
         cpu = self.cpu_count.get()
+        language = self.ocr_lang.get()
     
         if not input_folder or not output_folder:
             messagebox.showerror("Error", "Please provide both input and output folders")
@@ -300,15 +440,19 @@ class DocumentProcessorGUI:
         self.log_to_console(f"Running OCR in {mode} mode")
         self.log_to_console(f"Input folder: {input_folder}")
         self.log_to_console(f"Output folder: {output_folder}")
+        self.log_to_console(f"Language: {language}")
         self.log_to_console(f"CPU cores: {cpu}")
+
+        available_langs = self.scan_tesseract_languages()
+        self.log_to_console(f"Available languages: {len(available_langs)} detected")
     
         try:
             if mode == "fast":
                 script_name = "OCR_Images.py"
-                cmd = [sys.executable, script_name, "-i", input_folder, "-o", output_folder, "--workers", cpu]
+                cmd = [sys.executable, script_name, "-i", input_folder, "-o", output_folder, "--workers", cpu, "--lang", language]
             else:
                 script_name = "OCR_Images_slow.py"
-                cmd = [sys.executable, script_name, "-i", input_folder, "-o", output_folder]
+                cmd = [sys.executable, script_name, "-i", input_folder, "-o", output_folder, "--lang", language]
 
             if not os.path.exists(script_name):
                 self.log_to_console(f"ERROR: Script file not found: {script_name}")

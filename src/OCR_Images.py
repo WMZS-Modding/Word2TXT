@@ -17,7 +17,7 @@ except ImportError as e:
 
 def process_single_image(args):
     """Process a single image - optimized for performance"""
-    image_path, output_folder = args
+    image_path, output_folder, language = args
     
     try:
         image_file = os.path.basename(image_path)
@@ -31,10 +31,11 @@ def process_single_image(args):
             if img.mode in ('P', 'RGBA', 'LA'):
                 img = img.convert('RGB')
 
-            text = pytesseract.image_to_string(img, config='--oem 3 --psm 6')
+            ocr_config = '--oem 3 --psm 6'
+            text = pytesseract.image_to_string(img, config=ocr_config, lang=language)
             text = text.strip()
 
-        with open(output_txt_path, 'w', encoding='utf-8') as f:
+        with open(output_txt_path, 'w', encoding='utf-8', errors='replace') as f:
             f.write(text)
         
         char_count = len(text)
@@ -45,8 +46,8 @@ def process_single_image(args):
     except Exception as e:
         return image_file, f"error: {str(e)}", 0, 0
 
-def fast_ocr_images(input_folder, output_folder, max_workers=None):
-    """Fast parallel OCR processing"""
+def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=None):
+    """Fast parallel OCR processing with language support"""
     
     Path(output_folder).mkdir(parents=True, exist_ok=True)
 
@@ -66,12 +67,13 @@ def fast_ocr_images(input_folder, output_folder, max_workers=None):
     
     print(f"Found {total_files} images for FAST parallel OCR")
     print(f"Using {max_workers or os.cpu_count()} CPU cores")
+    print(f"Language: {language}")
     print("-" * 50)
     
     start_time = time.time()
     success_count = 0
 
-    process_args = [(img_path, output_folder) for img_path in image_paths]
+    process_args = [(img_path, output_folder, language) for img_path in image_paths]
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         future_to_file = {
@@ -83,13 +85,16 @@ def fast_ocr_images(input_folder, output_folder, max_workers=None):
             image_file, status, char_count, word_count = future.result()
             
             if status == "success":
-                print(f"[{i}/{total_files}] {image_file} - {char_count} chars")
+                safe_file = image_file.encode('ascii', 'replace').decode('ascii')
+                print(f"[{i}/{total_files}] {safe_file} - {char_count} chars")
                 success_count += 1
             elif status == "skipped":
-                print(f"[{i}/{total_files}] {image_file} - already processed")
+                safe_file = image_file.encode('ascii', 'replace').decode('ascii')
+                print(f"[{i}/{total_files}] {safe_file} - already processed")
                 success_count += 1
             else:
-                print(f"[{i}/{total_files}] {image_file} - {status}")
+                safe_file = image_file.encode('ascii', 'replace').decode('ascii')
+                print(f"[{i}/{total_files}] {safe_file} - {status}")
     
     end_time = time.time()
     processing_time = end_time - start_time
@@ -102,7 +107,7 @@ def fast_ocr_images(input_folder, output_folder, max_workers=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Fast parallel OCR for large image folders',
+        description='Fast parallel OCR with language support',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
@@ -110,8 +115,10 @@ def main():
                        help='Input folder with images')
     parser.add_argument('-o', '--output', required=True,
                        help='Output folder for TXT files')
-    parser.add_argument('--workers', type=int, 
-                       help='Number of parallel workers (default: CPU count)')
+    parser.add_argument('--workers', type=int, required=True,
+                       help='Number of parallel workers (e.g., 4)')
+    parser.add_argument('--lang', default='eng',
+                       help='OCR language (vie, eng, vie+eng, etc. Default: eng)')
     
     args = parser.parse_args()
     
@@ -122,7 +129,7 @@ def main():
     print(f"Input: {args.input}")
     print(f"Output: {args.output}")
     
-    success_count = fast_ocr_images(args.input, args.output, args.workers)
+    success_count = fast_ocr_images(args.input, args.output, args.lang, args.workers)
     
     if success_count > 0:
         print(f"Successfully processed {success_count} files")

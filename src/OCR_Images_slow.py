@@ -17,7 +17,7 @@ except ImportError as e:
     print("Linux: sudo apt-get install tesseract-ocr")
     sys.exit(1)
 
-def ocr_images_to_individual_files(input_folder, output_folder):
+def ocr_images_to_individual_files(input_folder, output_folder, language='eng'):
     """Perform OCR on all images and save individual text files"""
 
     Path(output_folder).mkdir(parents=True, exist_ok=True)
@@ -37,6 +37,7 @@ def ocr_images_to_individual_files(input_folder, output_folder):
     image_files.sort()
     
     print(f"Found {len(image_files)} images for OCR processing")
+    print(f"Language: {language}")
     print("-" * 50)
     
     success_count = 0
@@ -52,7 +53,7 @@ def ocr_images_to_individual_files(input_folder, output_folder):
                 if img.mode in ('P', 'RGBA', 'LA'):
                     img = img.convert('RGB')
 
-                text = pytesseract.image_to_string(img)
+                text = pytesseract.image_to_string(img, lang=language)
                 text = text.strip()
 
             with open(output_txt_path, 'w', encoding='utf-8', errors='replace') as f:
@@ -81,14 +82,16 @@ def ocr_images_to_individual_files(input_folder, output_folder):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Perform OCR on images and save individual text files',
+        description='Single-thread OCR with language support',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
     parser.add_argument('-i', '--input', required=True, 
-                       help='Input folder containing images from PDF conversion')
+                       help='Input folder containing images')
     parser.add_argument('-o', '--output', required=True,
-                       help='Output folder for individual TXT files')
+                       help='Output folder for TXT files')
+    parser.add_argument('--lang', default='eng',
+                       help='OCR language (vie, eng, vie+eng, etc. Default: eng)')
     
     args = parser.parse_args()
 
@@ -98,9 +101,10 @@ def main():
     
     print(f"Input folder: {args.input}")
     print(f"Output folder: {args.output}")
+    print(f"OCR Language: {args.lang}")
     print("-" * 50)
     
-    success_count = ocr_images_to_individual_files(args.input, args.output)
+    success_count = ocr_images_to_individual_files(args.input, args.output, args.lang)
     
     print("-" * 50)
     if success_count > 0:
