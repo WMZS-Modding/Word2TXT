@@ -12,13 +12,13 @@ class DocumentProcessorGUI:
         from src.OCR_Images import fast_ocr_images
         from src.OCR_Images_slow import ocr_images_to_individual_files as slow_ocr_images
         from src.Word2PNG_Method_2 import extract_images_zip_method as word2png_extract
-        from src.JPEG_to_PNG import convert_jpeg_to_png, convert_png_to_jpeg
+        from src.JPEG2PNG import convert_jpeg_to_png, convert_png_to_jpeg
     except ImportError as e:
         try:
             from OCR_Images import fast_ocr_images
             from OCR_Images_slow import ocr_images_to_individual_files as slow_ocr_images
             from Word2PNG_Method_2 import extract_images_zip_method as word2png_extract
-            from JPEG_to_PNG import convert_jpeg_to_png, convert_png_to_jpeg
+            from JPEG2PNG import convert_jpeg_to_png, convert_png_to_jpeg
         except ImportError as e2:
             print(f"Error: Could not import helper modules: {e2}")
 
