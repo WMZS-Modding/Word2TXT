@@ -24,7 +24,7 @@ jobs:
 
     - name: Build Windows executable
       run: |
-        pyinstaller --onefile --console --name "Word2TXT-Windows" main.py
+        pyinstaller --onefile --console --name "Word2TXT-Windows" src/main.py
 
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
@@ -52,7 +52,7 @@ jobs:
 
     - name: Build macOS executable
       run: |
-        pyinstaller --onefile --console --name "Word2TXT-MacOS" main.py
+        pyinstaller --onefile --console --name "Word2TXT-MacOS" src/main.py
 
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
@@ -81,7 +81,7 @@ jobs:
 
     - name: Build Linux executable
       run: |
-        pyinstaller --onefile --console --name "Word2TXT-Linux" main.py
+        pyinstaller --onefile --console --name "Word2TXT-Linux" src/main.py
 
     - name: Upload Linux artifact
       uses: actions/upload-artifact@v4
