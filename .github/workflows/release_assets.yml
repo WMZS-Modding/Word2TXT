@@ -30,7 +30,7 @@ jobs:
 
     - name: Build Windows executable
       run: |
-        pyinstaller --onefile --console --name "Word2TXT-Windows" ^
+        pyinstaller --onefile --noconsole --name "Word2TXT-Windows" ^
                 --add-data "src/OCR_Images.py;." ^
                 --add-data "src/OCR_Images_slow.py;." ^
                 --add-data "src/Word2PNG.py;." ^
@@ -65,7 +65,7 @@ jobs:
 
     - name: Build macOS executable
       run: |
-        pyinstaller --onefile --console --name "Word2TXT-MacOS" ^
+        pyinstaller --onefile --noconsole --name "Word2TXT-MacOS" ^
                 --add-data "src/OCR_Images.py;." ^
                 --add-data "src/OCR_Images_slow.py;." ^
                 --add-data "src/Word2PNG.py;." ^
@@ -101,7 +101,7 @@ jobs:
 
     - name: Build Linux executable
       run: |
-        pyinstaller --onefile --console --name "Word2TXT-Linux" ^
+        pyinstaller --onefile --noconsole --name "Word2TXT-Linux" ^
                 --add-data "src/OCR_Images.py;." ^
                 --add-data "src/OCR_Images_slow.py;." ^
                 --add-data "src/Word2PNG.py;." ^
