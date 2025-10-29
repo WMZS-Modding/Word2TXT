@@ -8,6 +8,14 @@ import sys
 from pathlib import Path
 
 class DocumentProcessorGUI:
+    try:
+        from OCR_Images import fast_ocr_images
+        from OCR_Images_slow import ocr_images_to_individual_files as slow_ocr_images
+        from Word2PNG_Method_2 import extract_images_zip_method as word2png_extract
+        from JPEG_to_PNG import convert_jpeg_to_png, convert_png_to_jpeg
+    except ImportError as e:
+        print(f"Warning: Could not import helper modules: {e}")
+
     def __init__(self, root):
         self.root = root
         self.root.title("Word2TXT")
@@ -363,64 +371,61 @@ class DocumentProcessorGUI:
     def run_word2png(self):
         docx_file = self.docx_input.get()
         output_folder = self.docx_output.get()
-        
+    
         if not docx_file or not output_folder:
             messagebox.showerror("Error", "Please provide both input DOCX and output folder")
             return
-        
+    
         if not os.path.exists(docx_file):
             messagebox.showerror("Error", f"DOCX file not found: {docx_file}")
             return
-        
+    
         self.log_to_console(f"Running Word2PNG on: {docx_file}")
         self.log_to_console(f"Output folder: {output_folder}")
-        
+    
         try:
-            cmd = [sys.executable, "Word2PNG-Method-2.py", "-i", docx_file, "-o", output_folder]
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            self.log_to_console(result.stdout)
-            if result.stderr:
-                self.log_to_console(f"ERROR: {result.stderr}")
-            
-            self.log_to_console("Word2PNG conversion completed!")
+            success_count, total_count = word2png_extract(docx_file, output_folder)
+        
+            if success_count > 0:
+                self.log_to_console(f"Successfully extracted {success_count} images")
+            else:
+                self.log_to_console("No images were extracted")
             
         except Exception as e:
             self.log_to_console(f"Error running Word2PNG: {e}")
+            messagebox.showerror("Error", f"Failed to extract images: {e}")
     
     def run_jpeg2png(self):
         input_folder = self.jpeg_input.get()
         output_folder = self.jpeg_output.get()
         conv_type = self.conv_type.get()
-        
+    
         if not input_folder or not output_folder:
             messagebox.showerror("Error", "Please provide both input and output folders")
             return
-        
+    
         if not os.path.exists(input_folder):
             messagebox.showerror("Error", f"Input folder not found: {input_folder}")
             return
-        
-        self.log_to_console(f"Running JPEG2PNG conversion")
+    
+        self.log_to_console(f"Running image conversion: {conv_type}")
         self.log_to_console(f"Input folder: {input_folder}")
         self.log_to_console(f"Output folder: {output_folder}")
-        self.log_to_console(f"Conversion type: {conv_type}")
-        
+    
         try:
-            cmd = [sys.executable, "JPEG_to_PNG.py", "-i", input_folder, "-o", output_folder]
-            if conv_type == "png2jpeg":
-                cmd.extend(["--to", "jpeg"])
-            
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            self.log_to_console(result.stdout)
-            if result.stderr:
-                self.log_to_console(f"ERROR: {result.stderr}")
-            
-            self.log_to_console("Image conversion completed!")
+            if conv_type == "jpeg2png":
+                success_count = convert_jpeg_to_png(input_folder, output_folder)
+            else:
+                success_count = convert_png_to_jpeg(input_folder, output_folder)
+        
+            if success_count > 0:
+                self.log_to_console(f"Successfully converted {success_count} images")
+            else:
+                self.log_to_console("No images were converted")
             
         except Exception as e:
-            self.log_to_console(f"Error running JPEG2PNG: {e}")
+            self.log_to_console(f"Error running image conversion: {e}")
+            messagebox.showerror("Error", f"Failed to convert images: {e}")
     
     def run_ocr(self):
         input_folder = self.ocr_input.get()
@@ -441,33 +446,22 @@ class DocumentProcessorGUI:
         self.log_to_console(f"Input folder: {input_folder}")
         self.log_to_console(f"Output folder: {output_folder}")
         self.log_to_console(f"Language: {language}")
-        self.log_to_console(f"CPU cores: {cpu}")
 
         available_langs = self.scan_tesseract_languages()
         self.log_to_console(f"Available languages: {len(available_langs)} detected")
     
         try:
             if mode == "fast":
-                script_name = "OCR_Images.py"
-                cmd = [sys.executable, script_name, "-i", input_folder, "-o", output_folder, "--workers", cpu, "--lang", language]
+                self.log_to_console(f"CPU cores: {cpu}")
+                success_count = fast_ocr_images(input_folder, output_folder, language, int(cpu))
             else:
-                script_name = "OCR_Images_slow.py"
-                cmd = [sys.executable, script_name, "-i", input_folder, "-o", output_folder, "--lang", language]
-
-            if not os.path.exists(script_name):
-                self.log_to_console(f"ERROR: Script file not found: {script_name}")
-                messagebox.showerror("Error", f"Script file not found: {script_name}")
-                return
+                success_count = slow_ocr_images(input_folder, output_folder, language)
         
-            self.log_to_console(f"Executing: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True)
-        
-            self.log_to_console(result.stdout)
-            if result.stderr:
-                self.log_to_console(f"ERROR: {result.stderr}")
-        
-            self.log_to_console("OCR processing completed!")
-        
+            if success_count > 0:
+                self.log_to_console(f"Successfully processed {success_count} images")
+            else:
+                self.log_to_console("No images were processed")
+            
         except Exception as e:
             self.log_to_console(f"Error running OCR: {e}")
             messagebox.showerror("Error", f"Failed to run OCR: {e}")
