@@ -6,22 +6,12 @@ import subprocess
 import os
 import sys
 from pathlib import Path
+import src.OCR_Images as ocrfast
+import src.OCR_Images_slow as ocrslow
+import src.Word2PNG as wp
+import src.JPEG2PNG as jp
 
 class DocumentProcessorGUI:
-    try:
-        from src.OCR_Images import fast_ocr_images
-        from src.OCR_Images_slow import ocr_images_to_individual_files as slow_ocr_images
-        from src.Word2PNG import extract_images_zip_method as word2png_extract
-        from src.JPEG_to_PNG import convert_jpeg_to_png, convert_png_to_jpeg
-    except ImportError as e:
-        try:
-            from OCR_Images import fast_ocr_images
-            from OCR_Images_slow import ocr_images_to_individual_files as slow_ocr_images
-            from Word2PNG import extract_images_zip_method as word2png_extract
-            from JPEG_to_PNG import convert_jpeg_to_png, convert_png_to_jpeg
-        except ImportError as e2:
-            print(f"Error: Could not import helper modules: {e2}")
-
     def __init__(self, root):
         self.root = root
         self.root.title("Word2TXT")
@@ -331,123 +321,123 @@ class DocumentProcessorGUI:
         self.console_text.config(state=tk.DISABLED)
 
         ttk.Button(right_frame, text="Clear Console", command=self.clear_console).pack(pady=5)
-    
+
     def browse_docx(self):
         from tkinter import filedialog
         filename = filedialog.askopenfilename(filetypes=[("Word documents", "*.docx")])
         if filename:
             self.docx_input.delete(0, tk.END)
             self.docx_input.insert(0, filename)
-    
+
     def browse_docx_output(self):
         from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.docx_output.delete(0, tk.END)
             self.docx_output.insert(0, folder)
-    
+
     def browse_jpeg_input(self):
         from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.jpeg_input.delete(0, tk.END)
             self.jpeg_input.insert(0, folder)
-    
+
     def browse_jpeg_output(self):
         from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.jpeg_output.delete(0, tk.END)
             self.jpeg_output.insert(0, folder)
-    
+
     def browse_ocr_input(self):
         from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.ocr_input.delete(0, tk.END)
             self.ocr_input.insert(0, folder)
-    
+
     def browse_ocr_output(self):
         from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.ocr_output.delete(0, tk.END)
             self.ocr_output.insert(0, folder)
-    
+
     def run_word2png(self):
         docx_file = self.docx_input.get()
         output_folder = self.docx_output.get()
-    
+
         if not docx_file or not output_folder:
             messagebox.showerror("Error", "Please provide both input DOCX and output folder")
             return
-    
+
         if not os.path.exists(docx_file):
             messagebox.showerror("Error", f"DOCX file not found: {docx_file}")
             return
-    
+
         self.log_to_console(f"Running Word2PNG on: {docx_file}")
         self.log_to_console(f"Output folder: {output_folder}")
-    
+
         try:
-            success_count, total_count = word2png_extract(docx_file, output_folder)
-        
+            success_count, total_count = wp.extract_images_zip_method(docx_file, output_folder)
+
             if success_count > 0:
                 self.log_to_console(f"Successfully extracted {success_count} images")
             else:
                 self.log_to_console("No images were extracted")
-            
+  
         except Exception as e:
             self.log_to_console(f"Error running Word2PNG: {e}")
             messagebox.showerror("Error", f"Failed to extract images: {e}")
-    
+
     def run_jpeg2png(self):
         input_folder = self.jpeg_input.get()
         output_folder = self.jpeg_output.get()
         conv_type = self.conv_type.get()
-    
+
         if not input_folder or not output_folder:
             messagebox.showerror("Error", "Please provide both input and output folders")
             return
-    
+
         if not os.path.exists(input_folder):
             messagebox.showerror("Error", f"Input folder not found: {input_folder}")
             return
-    
+
         self.log_to_console(f"Running image conversion: {conv_type}")
         self.log_to_console(f"Input folder: {input_folder}")
         self.log_to_console(f"Output folder: {output_folder}")
-    
+
         try:
             if conv_type == "jpeg2png":
-                success_count = convert_jpeg_to_png(input_folder, output_folder)
+                success_count = jp.convert_jpeg_to_png(input_folder, output_folder)
             else:
-                success_count = convert_png_to_jpeg(input_folder, output_folder)
-        
+                success_count = jp.convert_png_to_jpeg(input_folder, output_folder)
+
             if success_count > 0:
                 self.log_to_console(f"Successfully converted {success_count} images")
             else:
                 self.log_to_console("No images were converted")
-            
+
         except Exception as e:
             self.log_to_console(f"Error running image conversion: {e}")
             messagebox.showerror("Error", f"Failed to convert images: {e}")
-    
+
     def run_ocr(self):
         input_folder = self.ocr_input.get()
         output_folder = self.ocr_output.get()
         mode = self.ocr_mode.get()
         cpu = self.cpu_count.get()
         language = self.ocr_lang.get()
-    
+
         if not input_folder or not output_folder:
             messagebox.showerror("Error", "Please provide both input and output folders")
             return
-    
+
         if not os.path.exists(input_folder):
             messagebox.showerror("Error", f"Input folder not found: {input_folder}")
             return
-    
+
         self.log_to_console(f"Running OCR in {mode} mode")
         self.log_to_console(f"Input folder: {input_folder}")
         self.log_to_console(f"Output folder: {output_folder}")
@@ -455,19 +445,19 @@ class DocumentProcessorGUI:
 
         available_langs = self.scan_tesseract_languages()
         self.log_to_console(f"Available languages: {len(available_langs)} detected")
-    
+
         try:
             if mode == "fast":
                 self.log_to_console(f"CPU cores: {cpu}")
-                success_count = fast_ocr_images(input_folder, output_folder, language, int(cpu))
+                success_count = ocrfast.fast_ocr_images(input_folder, output_folder, language, int(cpu))
             else:
-                success_count = slow_ocr_images(input_folder, output_folder, language)
-        
+                success_count = ocrslow.ocr_images_to_individual_files(input_folder, output_folder, language)
+
             if success_count > 0:
                 self.log_to_console(f"Successfully processed {success_count} images")
             else:
                 self.log_to_console("No images were processed")
-            
+
         except Exception as e:
             self.log_to_console(f"Error running OCR: {e}")
             messagebox.showerror("Error", f"Failed to run OCR: {e}")
