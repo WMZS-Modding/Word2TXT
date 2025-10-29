@@ -10,17 +10,22 @@ from pathlib import Path
 class DocumentProcessorGUI:
     try:
         from src.OCR_Images import fast_ocr_images
-        from src.OCR_Images_slow import ocr_images_to_individual_files as slow_ocr_images
-        from src.Word2PNG_Method_2 import extract_images_zip_method as word2png_extract
+        from src.OCR_Images_slow import ocr_images_to_individual_files
+        from src.Word2PNG import extract_images_zip_method
         from src.JPEG2PNG import convert_jpeg_to_png, convert_png_to_jpeg
     except ImportError as e:
         try:
             from OCR_Images import fast_ocr_images
-            from OCR_Images_slow import ocr_images_to_individual_files as slow_ocr_images
-            from Word2PNG_Method_2 import extract_images_zip_method as word2png_extract
+            from OCR_Images_slow import ocr_images_to_individual_files
+            from Word2PNG import extract_images_zip_method
             from JPEG2PNG import convert_jpeg_to_png, convert_png_to_jpeg
         except ImportError as e2:
             print(f"Error: Could not import helper modules: {e2}")
+            fast_ocr_images = None
+            ocr_images_to_individual_files = None
+            extract_images_zip_method = None
+            convert_jpeg_to_png = None
+            convert_png_to_jpeg = None
 
     def __init__(self, root):
         self.root = root
@@ -377,62 +382,64 @@ class DocumentProcessorGUI:
     def run_word2png(self):
         docx_file = self.docx_input.get()
         output_folder = self.docx_output.get()
-    
+
         if not docx_file or not output_folder:
             messagebox.showerror("Error", "Please provide both input DOCX and output folder")
             return
-    
+
         if not os.path.exists(docx_file):
             messagebox.showerror("Error", f"DOCX file not found: {docx_file}")
             return
-    
+
         self.log_to_console(f"Running Word2PNG on: {docx_file}")
         self.log_to_console(f"Output folder: {output_folder}")
-    
+
         try:
-            success_count, total_count = word2png_extract(docx_file, output_folder)
-        
-            if success_count > 0:
-                self.log_to_console(f"Successfully extracted {success_count} images")
+            if extract_images_zip_method is not None:
+                success_count, total_count = extract_images_zip_method(docx_file, output_folder)
             else:
-                self.log_to_console("No images were extracted")
-            
+                self.log_to_console("ERROR: Word2PNG module not available")
+                return
+
         except Exception as e:
             self.log_to_console(f"Error running Word2PNG: {e}")
             messagebox.showerror("Error", f"Failed to extract images: {e}")
-    
+
     def run_jpeg2png(self):
         input_folder = self.jpeg_input.get()
         output_folder = self.jpeg_output.get()
         conv_type = self.conv_type.get()
-    
+
         if not input_folder or not output_folder:
             messagebox.showerror("Error", "Please provide both input and output folders")
             return
-    
+
         if not os.path.exists(input_folder):
             messagebox.showerror("Error", f"Input folder not found: {input_folder}")
             return
-    
+
         self.log_to_console(f"Running image conversion: {conv_type}")
         self.log_to_console(f"Input folder: {input_folder}")
         self.log_to_console(f"Output folder: {output_folder}")
-    
+
         try:
             if conv_type == "jpeg2png":
-                success_count = convert_jpeg_to_png(input_folder, output_folder)
+                if convert_jpeg_to_png is not None:
+                    success_count = convert_jpeg_to_png(input_folder, output_folder)
+                else:
+                    self.log_to_console("ERROR: JPEG2PNG module not available")
+                    return
             else:
-                success_count = convert_png_to_jpeg(input_folder, output_folder)
-        
-            if success_count > 0:
-                self.log_to_console(f"Successfully converted {success_count} images")
-            else:
-                self.log_to_console("No images were converted")
-            
+                if convert_png_to_jpeg is not None:
+                    success_count = convert_png_to_jpeg(input_folder, output_folder)
+                else:
+                    self.log_to_console("ERROR: JPEG2PNG module not available")
+                    return
+
         except Exception as e:
             self.log_to_console(f"Error running image conversion: {e}")
             messagebox.showerror("Error", f"Failed to convert images: {e}")
-    
+
     def run_ocr(self):
         input_folder = self.ocr_input.get()
         output_folder = self.ocr_output.get()
@@ -458,16 +465,18 @@ class DocumentProcessorGUI:
     
         try:
             if mode == "fast":
-                self.log_to_console(f"CPU cores: {cpu}")
-                success_count = fast_ocr_images(input_folder, output_folder, language, int(cpu))
+                if fast_ocr_images is not None:
+                    success_count = fast_ocr_images(input_folder, output_folder, language, int(cpu))
+                else:
+                    self.log_to_console("ERROR: OCR_Images module not available")
+                    return
             else:
-                success_count = slow_ocr_images(input_folder, output_folder, language)
-        
-            if success_count > 0:
-                self.log_to_console(f"Successfully processed {success_count} images")
-            else:
-                self.log_to_console("No images were processed")
-            
+                if ocr_images_to_individual_files is not None:
+                    success_count = ocr_images_to_individual_files(input_folder, output_folder, language)
+                else:
+                    self.log_to_console("ERROR: OCR_Images_slow module not available")
+                    return
+
         except Exception as e:
             self.log_to_console(f"Error running OCR: {e}")
             messagebox.showerror("Error", f"Failed to run OCR: {e}")
