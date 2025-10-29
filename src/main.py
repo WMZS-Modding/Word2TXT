@@ -6,10 +6,10 @@ import subprocess
 import os
 import sys
 from pathlib import Path
-import OCR_Images as ocrfast
-import OCR_Images_slow as ocrslow
-import Word2PNG as wp
-import JPEG2PNG as jp
+import src.OCR_Images as ocrfast
+import src.OCR_Images_slow as ocrslow
+import src.Word2PNG as wp
+import src.JPEG2PNG as jp
 
 class DocumentProcessorGUI:
     def __init__(self, root):
