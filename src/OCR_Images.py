@@ -4,7 +4,7 @@ import os
 import argparse
 from pathlib import Path
 import sys
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import multiprocessing
 import threading
