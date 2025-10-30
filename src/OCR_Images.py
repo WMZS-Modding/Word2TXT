@@ -48,7 +48,7 @@ def process_single_image(args):
         return image_file, f"error: {str(e)}", 0, 0
 
 def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=None):
-    """OCR processing that works in both script and executable mode"""
+    """True fast parallel OCR using threading"""
 
     Path(output_folder).mkdir(parents=True, exist_ok=True)
 
@@ -66,83 +66,75 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
     image_paths.sort()
     total_files = len(image_paths)
 
-    if getattr(sys, 'frozen', False):
-        print(f"Found {total_files} images for SINGLE-THREAD OCR (executable mode)")
-        print(f"Language: {language}")
-        print("Running in single-thread mode for executable compatibility")
-        print("-" * 50)
+    print(f"Found {total_files} images for TRUE FAST parallel OCR")
+    print(f"Using {max_workers or os.cpu_count()} threads")
+    print(f"Language: {language}")
+    print("-" * 50)
 
-        success_count = 0
-        for i, image_path in enumerate(image_paths, 1):
-            try:
-                image_file = os.path.basename(image_path)
-                image_stem = Path(image_file).stem
-                output_txt_path = os.path.join(output_folder, f"{image_stem}.txt")
+    start_time = time.time()
+    success_count = 0
+    completed_count = 0
+    lock = threading.Lock()
 
-                if os.path.exists(output_txt_path):
+    def process_image_thread(args):
+        nonlocal success_count, completed_count
+        image_path, output_folder, language = args
+
+        try:
+            image_file = os.path.basename(image_path)
+            image_stem = Path(image_file).stem
+            output_txt_path = os.path.join(output_folder, f"{image_stem}.txt")
+
+            if os.path.exists(output_txt_path):
+                with lock:
+                    completed_count += 1
                     safe_file = image_file.encode('ascii', 'replace').decode('ascii')
-                    print(f"[{i}/{total_files}] {safe_file} - already processed")
-                    success_count += 1
-                    continue
+                    print(f"[{completed_count}/{total_files}] {safe_file} - already processed")
+                return image_file, "skipped", 0, 0
 
-                with Image.open(image_path) as img:
-                    if img.mode in ('P', 'RGBA', 'LA'):
-                        img = img.convert('RGB')
+            with Image.open(image_path) as img:
+                if img.mode in ('P', 'RGBA', 'LA'):
+                    img = img.convert('RGB')
 
-                    text = pytesseract.image_to_string(img, lang=language)
-                    text = text.strip()
+                text = pytesseract.image_to_string(img, lang=language)
+                text = text.strip()
 
-                with open(output_txt_path, 'w', encoding='utf-8', errors='replace') as f:
-                    f.write(text)
+            with open(output_txt_path, 'w', encoding='utf-8', errors='replace') as f:
+                f.write(text)
 
-                safe_file = image_file.encode('ascii', 'replace').decode('ascii')
-                print(f"[{i}/{total_files}] {safe_file} - {len(text)} chars")
+            char_count = len(text)
+
+            with lock:
                 success_count += 1
-
-            except Exception as e:
+                completed_count += 1
                 safe_file = image_file.encode('ascii', 'replace').decode('ascii')
-                print(f"[{i}/{total_files}] {safe_file} - error: {e}")
+                print(f"[{completed_count}/{total_files}] {safe_file} - {char_count} chars")
 
-        return success_count
+            return image_file, "success", char_count, len(text.split())
 
-    else:
-        print(f"Found {total_files} images for FAST parallel OCR")
-        print(f"Using {max_workers or os.cpu_count()} CPU cores")
-        print(f"Language: {language}")
-        print("-" * 50)
+        except Exception as e:
+            with lock:
+                completed_count += 1
+                safe_file = image_file.encode('ascii', 'replace').decode('ascii')
+                print(f"[{completed_count}/{total_files}] {safe_file} - error: {str(e)}")
+            return image_file, f"error: {str(e)}", 0, 0
 
-        from concurrent.futures import ProcessPoolExecutor, as_completed
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(process_image_thread, (img_path, output_folder, language)) 
+                  for img_path in image_paths]
 
-        start_time = time.time()
-        success_count = 0
-        process_args = [(img_path, output_folder, language) for img_path in image_paths]
+        for future in as_completed(futures):
+            future.result()  # We don't need the result since we're updating counters in threads
 
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            future_to_file = {
-                executor.submit(process_single_image, args): args[0] 
-                for args in process_args
-            }
+    end_time = time.time()
+    processing_time = end_time - start_time
 
-            for i, future in enumerate(as_completed(future_to_file), 1):
-                image_file, status, char_count, word_count = future.result()
+    print("-" * 50)
+    print(f"Total processing time: {processing_time:.2f} seconds")
+    print(f"Average: {processing_time/total_files:.2f} seconds per image")
+    print(f"Speed: {total_files/processing_time:.2f} images/second")
 
-                if status == "success":
-                    safe_file = image_file.encode('ascii', 'replace').decode('ascii')
-                    print(f"[{i}/{total_files}] {safe_file} - {char_count} chars")
-                    success_count += 1
-                elif status == "skipped":
-                    safe_file = image_file.encode('ascii', 'replace').decode('ascii')
-                    print(f"[{i}/{total_files}] {safe_file} - already processed")
-                    success_count += 1
-                else:
-                    safe_file = image_file.encode('ascii', 'replace').decode('ascii')
-                    print(f"[{i}/{total_files}] {safe_file} - {status}")
-
-        end_time = time.time()
-        processing_time = end_time - start_time
-        print(f"Total processing time: {processing_time:.2f} seconds")
-
-        return success_count
+    return success_count
 
 def main():
     parser = argparse.ArgumentParser(
