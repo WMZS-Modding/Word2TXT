@@ -67,8 +67,9 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
     image_paths.sort()
     total_files = len(image_paths)
 
+    actual_workers = max_workers if max_workers is not None else os.cpu_count()
     print(f"Found {total_files} images for TRUE FAST parallel OCR")
-    print(f"Using {max_workers or os.cpu_count()} threads")
+    print(f"Using {actual_workers} threads")  # Show actual thread count
     print(f"Language: {language}")
     print("-" * 50)
 
@@ -91,7 +92,7 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
                     completed_count += 1
                     safe_file = image_file.encode('ascii', 'replace').decode('ascii')
                     print(f"[{completed_count}/{total_files}] {safe_file} - already processed")
-                return image_file, "skipped", 0, 0
+                return
 
             with Image.open(image_path) as img:
                 if img.mode in ('P', 'RGBA', 'LA'):
@@ -111,14 +112,11 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
                 safe_file = image_file.encode('ascii', 'replace').decode('ascii')
                 print(f"[{completed_count}/{total_files}] {safe_file} - {char_count} chars")
 
-            return image_file, "success", char_count, len(text.split())
-
         except Exception as e:
             with lock:
                 completed_count += 1
                 safe_file = image_file.encode('ascii', 'replace').decode('ascii')
                 print(f"[{completed_count}/{total_files}] {safe_file} - error: {str(e)}")
-            return image_file, f"error: {str(e)}", 0, 0
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(process_image_thread, (img_path, output_folder, language)) 
