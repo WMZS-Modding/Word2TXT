@@ -8,6 +8,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
 import multiprocessing
 
+if getattr(sys, 'frozen', False):
+    multiprocessing.freeze_support()
+
 try:
     from PIL import Image
     import pytesseract
@@ -50,6 +53,11 @@ def process_single_image(args):
 def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=None):
     """Fast parallel OCR processing with language support"""
 
+    if getattr(sys, 'frozen', False):
+        effective_workers = min(max_workers or 4, 8) if max_workers else 4
+    else:
+        effective_workers = max_workers
+
     Path(output_folder).mkdir(parents=True, exist_ok=True)
 
     image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.gif'}
@@ -67,7 +75,7 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
     total_files = len(image_paths)
 
     print(f"Found {total_files} images for FAST parallel OCR")
-    print(f"Using {max_workers or os.cpu_count()} CPU cores")
+    print(f"Using {effective_workers} CPU cores")
     print(f"Language: {language}")
     print("-" * 50)
 
@@ -76,7 +84,7 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
 
     process_args = [(img_path, output_folder, language) for img_path in image_paths]
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    with ProcessPoolExecutor(max_workers=effective_workers) as executor:
         future_to_file = {
             executor.submit(process_single_image, args): args[0] 
             for args in process_args
@@ -140,4 +148,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    multiprocessing.freeze_support()
