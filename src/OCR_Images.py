@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
+import multiprocessing
 
 try:
     from PIL import Image
