@@ -69,7 +69,7 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
 
     actual_workers = max_workers if max_workers is not None else os.cpu_count()
     print(f"Found {total_files} images for TRUE FAST parallel OCR")
-    print(f"Using {actual_workers} threads")  # Show actual thread count
+    print(f"Using {actual_workers} threads")
     print(f"Language: {language}")
     print("-" * 50)
 
