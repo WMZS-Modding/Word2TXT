@@ -7,6 +7,7 @@ import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
 import multiprocessing
+import threading
 
 try:
     from PIL import Image
@@ -124,7 +125,7 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
                   for img_path in image_paths]
 
         for future in as_completed(futures):
-            future.result()  # We don't need the result since we're updating counters in threads
+            future.result()
 
     end_time = time.time()
     processing_time = end_time - start_time
