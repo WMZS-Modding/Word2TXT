@@ -8,9 +8,6 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
 import multiprocessing
 
-if getattr(sys, 'frozen', False):
-    multiprocessing.freeze_support()
-
 try:
     from PIL import Image
     import pytesseract
@@ -51,12 +48,7 @@ def process_single_image(args):
         return image_file, f"error: {str(e)}", 0, 0
 
 def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=None):
-    """Fast parallel OCR processing with language support"""
-
-    if getattr(sys, 'frozen', False):
-        effective_workers = min(max_workers or 4, 8) if max_workers else 4
-    else:
-        effective_workers = max_workers
+    """OCR processing that works in both script and executable mode"""
 
     Path(output_folder).mkdir(parents=True, exist_ok=True)
 
@@ -74,45 +66,83 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
     image_paths.sort()
     total_files = len(image_paths)
 
-    print(f"Found {total_files} images for FAST parallel OCR")
-    print(f"Using {effective_workers} CPU cores")
-    print(f"Language: {language}")
-    print("-" * 50)
+    if getattr(sys, 'frozen', False):
+        print(f"Found {total_files} images for SINGLE-THREAD OCR (executable mode)")
+        print(f"Language: {language}")
+        print("Running in single-thread mode for executable compatibility")
+        print("-" * 50)
 
-    start_time = time.time()
-    success_count = 0
+        success_count = 0
+        for i, image_path in enumerate(image_paths, 1):
+            try:
+                image_file = os.path.basename(image_path)
+                image_stem = Path(image_file).stem
+                output_txt_path = os.path.join(output_folder, f"{image_stem}.txt")
 
-    process_args = [(img_path, output_folder, language) for img_path in image_paths]
+                if os.path.exists(output_txt_path):
+                    safe_file = image_file.encode('ascii', 'replace').decode('ascii')
+                    print(f"[{i}/{total_files}] {safe_file} - already processed")
+                    success_count += 1
+                    continue
 
-    with ProcessPoolExecutor(max_workers=effective_workers) as executor:
-        future_to_file = {
-            executor.submit(process_single_image, args): args[0] 
-            for args in process_args
-        }
+                with Image.open(image_path) as img:
+                    if img.mode in ('P', 'RGBA', 'LA'):
+                        img = img.convert('RGB')
 
-        for i, future in enumerate(as_completed(future_to_file), 1):
-            image_file, status, char_count, word_count = future.result()
+                    text = pytesseract.image_to_string(img, lang=language)
+                    text = text.strip()
 
-            if status == "success":
+                with open(output_txt_path, 'w', encoding='utf-8', errors='replace') as f:
+                    f.write(text)
+
                 safe_file = image_file.encode('ascii', 'replace').decode('ascii')
-                print(f"[{i}/{total_files}] {safe_file} - {char_count} chars")
+                print(f"[{i}/{total_files}] {safe_file} - {len(text)} chars")
                 success_count += 1
-            elif status == "skipped":
+
+            except Exception as e:
                 safe_file = image_file.encode('ascii', 'replace').decode('ascii')
-                print(f"[{i}/{total_files}] {safe_file} - already processed")
-                success_count += 1
-            else:
-                safe_file = image_file.encode('ascii', 'replace').decode('ascii')
-                print(f"[{i}/{total_files}] {safe_file} - {status}")
+                print(f"[{i}/{total_files}] {safe_file} - error: {e}")
 
-    end_time = time.time()
-    processing_time = end_time - start_time
+        return success_count
 
-    print("-" * 50)
-    print(f"Total processing time: {processing_time:.2f} seconds")
-    print(f"Average: {processing_time/total_files:.2f} seconds per image")
+    else:
+        print(f"Found {total_files} images for FAST parallel OCR")
+        print(f"Using {max_workers or os.cpu_count()} CPU cores")
+        print(f"Language: {language}")
+        print("-" * 50)
 
-    return success_count
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+
+        start_time = time.time()
+        success_count = 0
+        process_args = [(img_path, output_folder, language) for img_path in image_paths]
+
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            future_to_file = {
+                executor.submit(process_single_image, args): args[0] 
+                for args in process_args
+            }
+
+            for i, future in enumerate(as_completed(future_to_file), 1):
+                image_file, status, char_count, word_count = future.result()
+
+                if status == "success":
+                    safe_file = image_file.encode('ascii', 'replace').decode('ascii')
+                    print(f"[{i}/{total_files}] {safe_file} - {char_count} chars")
+                    success_count += 1
+                elif status == "skipped":
+                    safe_file = image_file.encode('ascii', 'replace').decode('ascii')
+                    print(f"[{i}/{total_files}] {safe_file} - already processed")
+                    success_count += 1
+                else:
+                    safe_file = image_file.encode('ascii', 'replace').decode('ascii')
+                    print(f"[{i}/{total_files}] {safe_file} - {status}")
+
+        end_time = time.time()
+        processing_time = end_time - start_time
+        print(f"Total processing time: {processing_time:.2f} seconds")
+
+        return success_count
 
 def main():
     parser = argparse.ArgumentParser(
