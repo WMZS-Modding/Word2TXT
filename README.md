@@ -12,7 +12,7 @@ Having trouble copying text from PDF? No problem, Word2TXT app will help you ext
 + Fast: Export fast thanks to your CPU. For desktops, I recommend 4 CPUs. For laptops, I recommend 2 CPUs or less
 + Slow: Slower but more efficient mode. I recommend this mode for laptops, or for desktops too
 
-## Installations
+## Installation
 ### 1. Download `Tesseract OCR`
 - [Windows](https://github.com/tesseract-ocr/tesseract)
 - MacOS:
