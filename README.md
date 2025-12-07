@@ -47,6 +47,11 @@ You have 2 methods to use the application:
 git clone https://github.com/WMZS-Modding/Word2TXT.git
 ```
 
+Install libraries:
+```bash
+pip install pillow pytesseract
+```
+
 And then run:
 ```bash
 python main.py

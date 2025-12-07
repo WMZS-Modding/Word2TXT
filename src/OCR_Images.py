@@ -1,24 +1,14 @@
-#!/usr/bin/env python3
-
 import os
 import argparse
 from pathlib import Path
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
-import multiprocessing
 import threading
-
-try:
-    from PIL import Image
-    import pytesseract
-except ImportError as e:
-    print("Required dependencies not installed. Please run:")
-    print("pip install pillow pytesseract")
-    sys.exit(1)
+from PIL import Image
+import pytesseract
 
 def process_single_image(args):
-    """Process a single image - optimized for performance"""
     image_path, output_folder, language = args
 
     try:
@@ -49,8 +39,6 @@ def process_single_image(args):
         return image_file, f"error: {str(e)}", 0, 0
 
 def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=None):
-    """True fast parallel OCR using threading"""
-
     Path(output_folder).mkdir(parents=True, exist_ok=True)
 
     image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.gif'}
@@ -136,19 +124,12 @@ def fast_ocr_images(input_folder, output_folder, language='eng', max_workers=Non
     return success_count
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Fast parallel OCR with language support',
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description='Fast parallel OCR with language support', formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument('-i', '--input', required=True, 
-                       help='Input folder with images')
-    parser.add_argument('-o', '--output', required=True,
-                       help='Output folder for TXT files')
-    parser.add_argument('--workers', type=int, required=True,
-                       help='Number of parallel workers (e.g., 4)')
-    parser.add_argument('--lang', default='eng',
-                       help='OCR language (vie, eng, vie+eng, etc. Default: eng)')
+    parser.add_argument('-i', '--input', required=True, help='Input folder with images')
+    parser.add_argument('-o', '--output', required=True, help='Output folder for TXT files')
+    parser.add_argument('--workers', type=int, required=True, help='Number of parallel workers (e.g., 4)')
+    parser.add_argument('--lang', default='eng', help='OCR language (vie, eng, vie+eng, etc. Default: eng)')
 
     args = parser.parse_args()
 
