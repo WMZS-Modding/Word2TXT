@@ -553,7 +553,7 @@ class Word2TXTGUI:
         messagebox.showinfo("YouTube", "Check our YouTube channel for tutorials and demonstrations.")
 
     def show_about(self):
-        messagebox.showinfo("About", "Word2TXT v0.1.1\n\nA tool designed to convert DOCX files to TXT.\n\nCredits:\nSuperHero2010: Owner and Author of Word2TXT")
+        messagebox.showinfo("About", "Word2TXT v0.2\n\nA tool designed to convert DOCX files to TXT.\n\nCredits:\nSuperHero2010: Owner and Author of Word2TXT")
 
 def main():
     root = tk.Tk()

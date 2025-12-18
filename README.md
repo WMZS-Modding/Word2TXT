@@ -6,11 +6,12 @@
 Having trouble copying text from PDF? No problem, Word2TXT app will help you extract text from images.
 
 ## Features
-- Word to Images: Important feature. You should start with it first
+- Word to Images: The legacy feature
+- PDF to Images: Important feature. You should start with it first
 - JPEG to PNG: Not important feature, but it will be useful if you want to convert JPEG to PNG
 - OCR Images: Central feature. It will export images to text for you to copy and paste into Word. Supported 2 modes:
-+ Fast: Export fast thanks to your CPU. For desktops, I recommend 4 CPUs. For laptops, I recommend 2 CPUs or less
-+ Slow: Slower but more efficient mode. I recommend this mode for laptops, or for desktops too
+    + Fast: Export fast thanks to your CPU. For desktops, I recommend 4 CPUs. For laptops, I recommend 2 CPUs or less
+    + Slow: Slower but more efficient mode. I recommend this mode for laptops, or for desktops too
 
 ## Installation
 ### 1. Download `Tesseract OCR`
