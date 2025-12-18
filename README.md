@@ -49,7 +49,7 @@ git clone https://github.com/WMZS-Modding/Word2TXT.git
 
 Install libraries:
 ```bash
-pip install pillow pytesseract
+pip install pillow pytesseract PyMuPDF
 ```
 
 And then run:
@@ -58,9 +58,9 @@ python main.py
 ```
 
 ### 4. Usage
-- First, you need to convert your PDF to DOCX. I recommend using `Gooogle Drive` and `Gooogle Docs`
-- Second, click the application you've downloaded and extracted
-- Then, choose the `Word2PNG` section. Choose your input DOCX and output folder. In the `JPEG2PNG` section, it's optional but it's good for you if you prefer PNG instead of JPEG
+- First, click the application you've downloaded and extracted
+- Then, in `PDF2PNG`, choose your in put PDF and output folder (*If you prefer Word, you need to convert your PDF to DOCX. I recommend using* `Gooogle Drive` *and* `Gooogle Docs`*. Then, choose the* `Word2PNG` *section. Choose your input DOCX and output folder*)
+- In the `JPEG2PNG` section, it's optional but it's good for you if you prefer PNG instead of JPEG
 - Next, choose the `OCR Images` section. I recommend choosing `Slow` mode to get a better result. Choose your language in `Language` part (*Languages will automatically show after you paste* `traineddata` (*Windows*) *or install language* (*MacOS and Linux*)). Choose your input image folder and output TXT folder. In `Fast` mode, I recommend choosing 4 CPU
 - Finally, check your output TXT folder, you'll see result
 

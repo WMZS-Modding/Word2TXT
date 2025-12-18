@@ -1,10 +1,11 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
+from tkinter import ttk, scrolledtext, messagebox, filedialog
 import os
 import OCR_Images as ocrfast
 import OCR_Images_slow as ocrslow
 import Word2PNG as wp
 import JPEG2PNG as jp
+import PDF2PNG as pp
 
 class Word2TXTGUI:
     def __init__(self, root):
@@ -51,10 +52,43 @@ class Word2TXTGUI:
 
         self.create_word2png_tab(notebook)
 
+        self.create_pdf2png_tab(notebook)
+
         self.create_jpeg2png_tab(notebook)
 
         self.create_ocr_tab(notebook)
-    
+
+    def create_pdf2png_tab(self, notebook):
+        tab = ttk.Frame(notebook)
+        notebook.add(tab, text="PDF2PNG")
+
+        title_label = ttk.Label(tab, text="Convert PDF pages to images", font=('Arial', 12, 'bold'))
+        title_label.pack(pady=10)
+
+        input_frame = ttk.Frame(tab)
+        input_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(input_frame, text="Input your PDF file:").pack(side=tk.LEFT)
+        self.pdf_input = ttk.Entry(input_frame)
+        self.pdf_input.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
+        ttk.Button(input_frame, text="Browse", command=self.browse_pdf_input).pack(side=tk.RIGHT, padx=(5, 0))
+
+        output_frame = ttk.Frame(tab)
+        output_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(output_frame, text="Output image folder:").pack(side=tk.LEFT)
+        self.pdf_output = ttk.Entry(output_frame)
+        self.pdf_output.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
+        ttk.Button(output_frame, text="Browse", command=self.browse_pdf_output).pack(side=tk.RIGHT, padx=(5, 0))
+
+        dpi_frame = ttk.Frame(tab)
+        dpi_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(dpi_frame, text="Image quality (DPI):").pack(side=tk.LEFT)
+        self.pdf_dpi = tk.StringVar(value="200")
+        dpi_entry = ttk.Entry(dpi_frame, textvariable=self.pdf_dpi, width=8)
+        dpi_entry.pack(side=tk.LEFT, padx=(5, 0))
+        ttk.Label(dpi_frame, text=" (Higher = better quality, larger files)").pack(side=tk.LEFT, padx=(5, 0))
+
+        ttk.Button(tab, text="Convert PDF to Images", command=self.run_pdf2png).pack(pady=10)
+
     def create_word2png_tab(self, notebook):
         tab = ttk.Frame(notebook)
         notebook.add(tab, text="Word2PNG")
@@ -302,47 +336,99 @@ class Word2TXTGUI:
 
         ttk.Button(right_frame, text="Clear Console", command=self.clear_console).pack(pady=5)
 
+    def browse_pdf_input(self):
+        filename = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
+        if filename:
+            self.pdf_input.delete(0, tk.END)
+            self.pdf_input.insert(0, filename)
+
+    def browse_pdf_output(self):
+        folder = filedialog.askdirectory()
+        if folder:
+            self.pdf_output.delete(0, tk.END)
+            self.pdf_output.insert(0, folder)
+
     def browse_docx(self):
-        from tkinter import filedialog
         filename = filedialog.askopenfilename(filetypes=[("Word documents", "*.docx")])
         if filename:
             self.docx_input.delete(0, tk.END)
             self.docx_input.insert(0, filename)
 
     def browse_docx_output(self):
-        from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.docx_output.delete(0, tk.END)
             self.docx_output.insert(0, folder)
 
     def browse_jpeg_input(self):
-        from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.jpeg_input.delete(0, tk.END)
             self.jpeg_input.insert(0, folder)
 
     def browse_jpeg_output(self):
-        from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.jpeg_output.delete(0, tk.END)
             self.jpeg_output.insert(0, folder)
 
     def browse_ocr_input(self):
-        from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.ocr_input.delete(0, tk.END)
             self.ocr_input.insert(0, folder)
 
     def browse_ocr_output(self):
-        from tkinter import filedialog
         folder = filedialog.askdirectory()
         if folder:
             self.ocr_output.delete(0, tk.END)
             self.ocr_output.insert(0, folder)
+
+    def run_pdf2png(self):
+        pdf_file = self.pdf_input.get()
+        output_folder = self.pdf_output.get()
+        dpi = self.pdf_dpi.get()
+
+        if not pdf_file or not output_folder:
+            messagebox.showerror("Error", "Please provide both input PDF and output folder")
+            return
+
+        if not os.path.exists(pdf_file):
+            messagebox.showerror("Error", f"PDF file not found: {pdf_file}")
+            return
+
+        self.log_to_console(f"Converting PDF to images: {pdf_file}")
+        self.log_to_console(f"Output folder: {output_folder}")
+
+        try:
+            dpi_value = int(dpi)
+        except ValueError:
+            self.log_to_console("ERROR: DPI must be a number")
+            messagebox.showerror("Invalid Input", "DPI must be a valid number")
+            return
+
+        if dpi_value <= 0:
+            self.log_to_console("Negative number. Not allowed")
+            messagebox.showerror("Negative number.", "DPI must be a positive number")
+            return
+
+        if dpi_value > 1200:
+            self.log_to_console(f"Note: Using high DPI ({dpi_value})")
+
+        self.log_to_console(f"DPI: {dpi_value}")
+
+        try:
+            image_count = pp.extract_images_from_pdf(pdf_file, output_folder, dpi_value)
+
+            if image_count > 0:
+                self.log_to_console(f"Successfully extracted {image_count} images from PDF")
+                self.log_to_console(f"Images saved to: {output_folder}")
+            else:
+                self.log_to_console("Failed to extract images from PDF")
+
+        except Exception as e:
+            self.log_to_console(f"Error converting PDF: {e}")
+            messagebox.showerror("Error", f"Failed to process PDF: {e}")
 
     def run_word2png(self):
         docx_file = self.docx_input.get()
